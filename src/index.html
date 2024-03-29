@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>OPM : All Chapters</title>
+
+     <link rel="stylesheet" href="css/site.css">
+     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+    <h1>
+        {{ rack_name }}
+    </h1>
+    <h2>
+        Rack overview
+    </h2>
+    <div style="display: flex;">
+    <div>
+        <h3>
+            Front
+        </h3>
+        {{ rack_front }}
+    </div>
+    <div>
+        <h3>
+            Rear
+        </h3>
+        {{ rack_rear }}
+    </div>
+    </div>
+        <h2>
+            List of devices
+        </h2>
+    <ol>
+        {% for d in devices_interfaces_list %}
+        <li>
+            {{ d.deviceName }}
+            <ol>
+                {% for i in d.interfaceNames %}
+                <li>
+                    {{ i }}
+                </li>
+                {% endfor %}
+                {% for f in d.frontportNames %}
+                <li>
+                    {{ f }}
+                </li>
+                {% endfor %}
+            </ol>
+        </li>
+        {% endfor %}
+    </ol>
+</body>
+</html>
