@@ -31,18 +31,23 @@
             List of devices
         </h2>
     <ol>
-        {% for d in devices_interfaces_list %}
+        {% for device in device_interfaces_front_ports_list %}
         <li>
-            {{ d.deviceName }}
+            {{ device.deviceName }}
             <ol>
-                {% for i in d.interfaceNames %}
+                {% for interface in device.interface_names %}
                 <li>
-                    {{ i }}
+                    {{ interface }}
                 </li>
                 {% endfor %}
-                {% for f in d.frontportNames %}
+                {% for front_port in device.front_port_names %}
                 <li>
-                    {{ f }}
+                    {{ front_port }}
+                </li>
+                {% endfor %}
+                {% for cable_label in device.interface_cable_labels %}
+                <li>
+                    {{ cable_label }}
                 </li>
                 {% endfor %}
             </ol>

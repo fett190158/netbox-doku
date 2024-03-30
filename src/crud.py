@@ -80,6 +80,9 @@ class CRUD:
             print(f"Failed to fetch front ports. Status code: {response.status_code}")
             return None
 
+
+
+
 def main():
     # NetBox API URL and token
     api_url = 'https://192.168.56.10/api'
@@ -95,60 +98,51 @@ def main():
     # Instance for CRUD
     crud = CRUD(api_url, api_token)
 
-    devices_interfaces_list = []
-    interfaces_list = []
-    front_port_list = []
-
     # Fetch devices by rack ID
     rack_name = crud.get_rack_name(args.rack_id)
     rack_front = crud.get_rack_front(args.rack_id)
     rack_rear = crud.get_rack_rear(args.rack_id)
     rack_devices = crud.get_devices_by_rack_id(args.rack_id)
-    
-    #device_front_ports = crud.get_front_ports_by_device_id(args.rack_id)
 
+    device_interfaces_front_ports_list = []
+    interfaces_list = []
+    front_ports_list = []
+    interface_cable_list = []
+    front_port_cable_list = []
 
-    """i = 0
-    for d in rack_devices:
-        if d['name'] is not None:
-            device_name = d['name']
-            for interface in crud.get_interfaces_by_device_id(d['id']):
-                interfaces_list .append(interface['name'])
-            device_interfaces_list.append(device_name)
-            device_interfaces_list.append(str(d['id']))
-            device_interfaces_list.append(interfaces_list)
+    for device in rack_devices:
+        if device['name'] is not None:
             interfaces_list = []
-            devices_interfaces_list.append(device_interfaces_list)
-            device_interfaces_list = []
-            i += 1"""
-
-    for d in rack_devices:
-        if d['name'] is not None:
-            device_name = d['name']
-            interfaces_list = []
-            front_port_list = []
-            for interface in crud.get_interfaces_by_device_id(d['id']):
+            front_ports_list = []
+            interface_cables_list = []
+            front_port_cables_list = []
+            for interface in crud.get_interfaces_by_device_id(device['id']):
                 interfaces_list.append(interface['name'])
-            for front_port in crud.get_front_ports_by_device_id(d['id']):
-                front_port_list.append(front_port['name'])
+                # Überprüfe, ob 'cable' existiert und nicht None ist, bevor du auf 'label' zugreifst
+                if interface.get('cable') is not None and interface['cable'].get('label') is not None:
+                    interface_cables_list.append(interface['cable']['label'])
+            for front_port in crud.get_front_ports_by_device_id(device['id']):
+                front_ports_list.append(front_port['name'])
+                # Gleiche Überprüfung für 'front_port['cable']'
+                if front_port.get('cable') is not None and front_port['cable'].get('label') is not None:
+                    front_port_cables_list.append(front_port['cable']['label'])
 
-            device_interfaces = {
-                "deviceName": device_name,
-                "deviceID": d['id'],
-                "interfaceNames": interfaces_list,
-                "frontportNames": front_port_list
+            device_interface_front_port = {
+                "device_name": device['name'],
+                "device_id": device['id'],
+                "interface_names": interfaces_list,
+                "front_port_names": front_ports_list,
+                "interface_cable_labels": interface_cables_list,
+                "front_port_cable_labels": front_port_cables_list
             }
-            devices_interfaces_list.append(device_interfaces)
-
-    #device_interface_cable_list = [d['cable']['label'] for d in device_interfaces]
-    #device_interface_link_peers_list = [d['link_peers']['name'] for d in device_interfaces]
+            device_interfaces_front_ports_list.append(device_interface_front_port)
 
     env = Environment(loader=FileSystemLoader('src'))
     index_template = env.get_template('index.html')
     output_from_parsed_template = index_template.render(rack_name=rack_name,
                                                         rack_front=rack_front,
                                                         rack_rear=rack_rear,
-                                                        devices_interfaces_list=devices_interfaces_list)
+                                                        device_interfaces_front_ports_list=device_interfaces_front_ports_list)
     with open("outputs/output.html", "w") as chap_page:
         chap_page.write(output_from_parsed_template)
 
