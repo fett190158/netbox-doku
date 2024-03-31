@@ -14,6 +14,20 @@ class CRUD:
         }
 
 
+    def get_rack_id(self, rack_name):
+        url = f'{self.api_url}/dcim/racks/?name={rack_name}'
+        response = requests.get(url, verify=False, headers=self.headers)
+
+
+        if response.status_code == 200:
+            print(response.json())
+            rack_id = response.json()['results'][0]['id']
+            
+            return rack_id
+        else:
+            print(f"Failed to fetch rack id. Status code: {response.status_code}")
+            return None
+
     def get_rack_name(self, rack_id):
         url = f'{self.api_url}/dcim/racks/{rack_id}'
         response = requests.get(url, verify=False, headers=self.headers)
@@ -40,8 +54,8 @@ class CRUD:
         url = f'{self.api_url}/dcim/racks/{rack_id}/elevation/?face=rear&render=svg'
         response = requests.get(url, verify=False, headers=self.headers)
         if response.status_code == 200:
-                rear = response.text
-                return rear
+                rack_rear = response.text
+                return rack_rear
         else:
             print(f"Failed to fetch rear rack. Status code: {response.status_code}")
             return None
@@ -68,7 +82,7 @@ class CRUD:
         else:
             print(f"Failed to fetch interfaces. Status code: {response.status_code}")
             return None
-    
+
     def get_front_ports_by_device_id(self, device_id):
         url = f'{self.api_url}/dcim/front-ports/?device_id={device_id}'
         response = requests.get(url, verify=False,  headers=self.headers)
@@ -80,7 +94,16 @@ class CRUD:
             print(f"Failed to fetch front ports. Status code: {response.status_code}")
             return None
 
+    def get_rendered_config(self, device_id):
+        url = f'https://192.168.56.10/dcim/devices/{device_id}/render-config/?export=True'
+        response = requests.get(url, verify=False,  headers=self.headers)
 
+        if response.status_code == 200:
+            config = response.content
+            return config
+        else:
+            print(f"Failed to fetch config. Status code: {response.status_code}")
+            return None
 
 
 def main():
@@ -93,47 +116,67 @@ def main():
                     prog='Netbox Rack-Doku',
                     description='Generates Device Doku of specific Rack')
     parser.add_argument('--rack_id')
+    parser.add_argument('--rack_name')
     args = parser.parse_args()
+
+
 
     # Instance for CRUD
     crud = CRUD(api_url, api_token)
 
     # Fetch devices by rack ID
-    rack_name = crud.get_rack_name(args.rack_id)
-    rack_front = crud.get_rack_front(args.rack_id)
-    rack_rear = crud.get_rack_rear(args.rack_id)
-    rack_devices = crud.get_devices_by_rack_id(args.rack_id)
+    if args.rack_name:
+        rack_id = crud.get_rack_id(args.rack_name)
+    else:
+        rack_id = args.rack_id
+
+    
+    rack_name = crud.get_rack_name(rack_id)
+    rack_front = crud.get_rack_front(rack_id)
+    rack_rear = crud.get_rack_rear(rack_id)
+    rack_devices = crud.get_devices_by_rack_id(rack_id)
+
+
+    for device in rack_devices:
+        if device['config_template']:
+            rendered_config = crud.get_rendered_config(device['id'])
+            print(rendered_config)
+
 
     device_interfaces_front_ports_list = []
     interfaces_list = []
     front_ports_list = []
-    interface_cable_list = []
-    front_port_cable_list = []
+
 
     for device in rack_devices:
         if device['name'] is not None:
             interfaces_list = []
             front_ports_list = []
-            interface_cables_list = []
-            front_port_cables_list = []
             for interface in crud.get_interfaces_by_device_id(device['id']):
-                interfaces_list.append(interface['name'])
-                # Überprüfe, ob 'cable' existiert und nicht None ist, bevor du auf 'label' zugreifst
+                interfaces_cables_link_peers = {
+                    "interface_name": interface['name']
+                }
                 if interface.get('cable') is not None and interface['cable'].get('label') is not None:
-                    interface_cables_list.append(interface['cable']['label'])
+                    interfaces_cables_link_peers['interface_cable'] = interface['cable']['label']
+                    interfaces_cables_link_peers['interface_link_peer'] = str(interface['link_peers'][0]['name'])
+                    interfaces_cables_link_peers['interface_link_peer_device'] = str(interface['link_peers'][0]['device']['name'])
+                interfaces_list.append(interfaces_cables_link_peers)
+
             for front_port in crud.get_front_ports_by_device_id(device['id']):
-                front_ports_list.append(front_port['name'])
-                # Gleiche Überprüfung für 'front_port['cable']'
+                front_ports_cables_link_peers = {
+                    "front_port_name": front_port['name']
+                }
                 if front_port.get('cable') is not None and front_port['cable'].get('label') is not None:
-                    front_port_cables_list.append(front_port['cable']['label'])
+                    front_ports_cables_link_peers['front_port_cable'] = front_port['cable']['label']
+                    front_ports_cables_link_peers['front_port_link_peer'] = front_port['link_peers'][0]['name']
+                    front_ports_cables_link_peers['front_port_link_peer_device'] = front_port['link_peers'][0]['device']['name']
+                front_ports_list.append(front_ports_cables_link_peers)
 
             device_interface_front_port = {
                 "device_name": device['name'],
                 "device_id": device['id'],
-                "interface_names": interfaces_list,
-                "front_port_names": front_ports_list,
-                "interface_cable_labels": interface_cables_list,
-                "front_port_cable_labels": front_port_cables_list
+                "interface": interfaces_list,
+                "front_port": front_ports_list
             }
             device_interfaces_front_ports_list.append(device_interface_front_port)
 
@@ -143,12 +186,12 @@ def main():
                                                         rack_front=rack_front,
                                                         rack_rear=rack_rear,
                                                         device_interfaces_front_ports_list=device_interfaces_front_ports_list)
-    with open("outputs/output.html", "w") as chap_page:
+    with open(f"outputs/{rack_name}_doku.html", "w") as chap_page:
         chap_page.write(output_from_parsed_template)
 
-    # Convert output.html to output.pdf
-    path = os.path.abspath('outputs/output.html')
-    converter.convert(f'file:///{path}', 'outputs/output.pdf')
+    # Convert doku.html to doku.pdf
+    path = os.path.abspath(f'outputs/{rack_name}_doku.html')
+    converter.convert(f'file:///{path}', f'outputs/{rack_name}_doku.pdf')
 
 if __name__ == "__main__":
     main()

@@ -2,52 +2,40 @@
 <html lang="en">
 <head>
     <title>OPM : All Chapters</title>
-
-     <link rel="stylesheet" href="css/site.css">
-     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/site.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
 </head>
 <body>
-    <h1>
-        {{ rack_name }}
-    </h1>
-    <h2>
-        Rack overview
-    </h2>
+    <h1>{{ rack_name }}</h1>
+    <h2>Rack overview</h2>
     <div style="display: flex;">
-    <div>
-        <h3>
-            Front
-        </h3>
-        {{ rack_front }}
+        <div>
+            <h3>Front</h3>
+            {{ rack_front }}
+        </div>
+        <div>
+            <h3>Rear</h3>
+            {{ rack_rear }}
+        </div>
     </div>
-    <div>
-        <h3>
-            Rear
-        </h3>
-        {{ rack_rear }}
-    </div>
-    </div>
-        <h2>
-            List of devices
-        </h2>
+    <h2>List of devices</h2>
     <ol>
         {% for device in device_interfaces_front_ports_list %}
         <li>
-            {{ device.deviceName }}
+            {{ device.device_name }}
             <ol>
-                {% for interface in device.interface_names %}
+                {% for interface in device.interface %}
                 <li>
-                    {{ interface }}
+                    {{ interface.interface_name }}
+                    {% if interface.interface_cable %} - {{ interface.interface_cable }}{% endif %}
+                    {% if interface.interface_link_peer %} - {{ interface.interface_link_peer }}({{ interface.interface_link_peer_device }}){% endif %}
                 </li>
                 {% endfor %}
-                {% for front_port in device.front_port_names %}
+                {% for front_port in device.front_port %}
                 <li>
-                    {{ front_port }}
-                </li>
-                {% endfor %}
-                {% for cable_label in device.interface_cable_labels %}
-                <li>
-                    {{ cable_label }}
+                    {{ front_port.front_port_name }}
+                    {% if front_port.front_port_cable %} - {{ front_port.front_port_cable }}{% endif %}
+                    {% if front_port.front_port_link_peer %} - {{ front_port.front_port_link_peer }}({{ front_port.front_port_link_peer_device }}){% endif %}
                 </li>
                 {% endfor %}
             </ol>
